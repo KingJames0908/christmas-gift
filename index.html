@@ -29,14 +29,14 @@
             position: absolute;
             bottom: 10px;
             right: 10px;
-            width: 100px; /* 手机上改小一点 */
+            width: 100px;
             height: 75px;
             border-radius: 8px;
             border: 2px solid rgba(255, 215, 0, 0.3);
             z-index: 10;
             opacity: 0.6;
             transform: scaleX(-1); /* 镜像 */
-            display: none; /* JS加载成功后显示 */
+            display: none;
             object-fit: cover;
         }
 
@@ -46,26 +46,61 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 5;
-            pointer-events: none;
+            z-index: 999; /* 提高层级，覆盖一切直到加载完成 */
+            background-color: #000; /* 纯黑背景遮挡 */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center;
-            color: #fff;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            transition: opacity 1s ease-out; /* 淡出效果 */
         }
 
-        /* 专属祝福语样式 */
+        /* 进度条容器 */
+        .progress-container {
+            width: 80%;
+            max-width: 300px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 进度条本体 */
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #ff6b6b);
+            box-shadow: 0 0 10px #FFD700;
+            border-radius: 2px;
+            transition: width 0.1s linear; /* 平滑过渡 */
+        }
+
+        /* 加载文字 */
+        .loading-text {
+            color: #FFD700;
+            font-size: 16px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+            font-family: 'Noto Serif SC', serif;
+            animation: breathe 2s infinite ease-in-out;
+        }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* 专属祝福语样式 (主界面显示) */
         #greeting-text {
             position: absolute;
-            top: 18%; /* 手机上稍微往下一点 */
+            top: 18%;
             width: 90%;
             left: 5%;
             text-align: center;
             font-family: 'Dancing Script', 'Noto Serif SC', serif;
-            font-size: 2.2rem; /* 手机字体大小调整 */
+            font-size: 2.2rem;
             line-height: 1.4;
             color: #FFD700;
             text-shadow:
@@ -74,64 +109,32 @@
             background: linear-gradient(to bottom, #FFD700, #F0E68C);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            opacity: 1;
+            opacity: 0; /* 初始隐藏，等加载完显示 */
             transition: opacity 1.5s ease-in-out;
             z-index: 6;
             pointer-events: none;
         }
 
-        #loading-text {
-            font-size: 20px;
-            letter-spacing: 2px;
-            transition: opacity 0.5s;
-            max-width: 80%;
-        }
-
-        #instructions {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            width: 90%;
-            transform: translateX(-50%);
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.7);
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px 10px;
-            border-radius: 20px;
-            opacity: 0;
-            transition: opacity 1s;
-            white-space: nowrap;
-            text-align: center;
-        }
-
-        .highlight {
-            color: #FFD700;
-            font-weight: bold;
-        }
-
-        /* 简单的上传按钮，用于本地测试 */
-        #upload-btn {
+        /* 左上角指引 (新需求) */
+        #guide-overlay {
             position: absolute;
             top: 20px;
-            right: 20px;
-            z-index: 20;
-            pointer-events: auto;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.5);
-            color: #FFD700;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.6);
             font-size: 12px;
-            transition: 0.3s;
+            line-height: 1.8;
+            z-index: 5;
+            opacity: 0; /* 初始隐藏 */
+            transition: opacity 1s;
+            pointer-events: none;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        #upload-btn:hover {
-            background: rgba(255, 215, 0, 0.2);
-        }
-
-        /* 隐藏文件输入 */
-        #file-input {
-            display: none;
+        #guide-overlay b {
+            color: #FFD700;
+            font-size: 14px;
         }
 
         /* 页码提示 */
@@ -148,6 +151,10 @@
             letter-spacing: 2px;
             text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
         }
+
+        /* 隐藏文件输入 */
+        #file-input { display: none; }
+        #upload-btn { display: none; } /* 既然是给女朋友看，上传按钮可以隐藏了 */
     </style>
 </head>
 <body>
@@ -158,9 +165,19 @@
 <!-- 3D 容器 -->
 <div id="canvas-container"></div>
 
-<!-- UI 层 -->
+<!-- 1. 加载层 (进度条) -->
 <div id="ui-layer">
-    <div id="loading-text">正在编织回忆...<br><span style="font-size:14px; color:#aaa;">请允许摄像头权限以开启手势魔法</span></div>
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div class="loading-text">正在加载回忆，乖乖老婆别急哦...</div>
+</div>
+
+<!-- 2. 主界面 UI -->
+<!-- 左上角指引 -->
+<div id="guide-overlay">
+    ✊ <b>握拳</b>：展示圣诞树<br>
+    🖐️ <b>张手</b>：展开回忆
 </div>
 
 <!-- 祝福语 -->
@@ -168,12 +185,7 @@
 
 <div id="page-indicator">第 1 组回忆</div>
 
-<div id="instructions">
-    ✊ <b>握拳</b>: 收纳 | 🖐️ <b>张手</b>: 下一组 (6张)
-</div>
-
-<!-- 图片上传 (测试用) -->
-<button id="upload-btn" onclick="document.getElementById('file-input').click()">上传我们的照片</button>
+<!-- 隐藏的上传功能 -->
 <input type="file" id="file-input" multiple accept="image/*">
 
 <!-- 引入库 -->
@@ -187,56 +199,23 @@
 <script>
     // --- 用户配置区 ---
     const BASE_PHOTOS = [
-        'IMG_20250817_212036.jpg',
-        'IMG_20250818_203221.jpg',
-        'IMG_20250818_203308.jpg',
-        'IMG_20250823_155336.jpg',
-        'IMG_20250826_093345_1.jpg',
-        'IMG_20250826_141047.jpg',
-        'IMG_20250828_121826.jpg',
-        'IMG_20250828_133111.jpg',
-        'IMG_20250828_192257.jpg',
-        'IMG_20250828_192318_2.jpg',
-        'IMG_20250828_213506.jpg',
-        'IMG_20250828_213537.jpg',
-        'IMG_20250828_214233.jpg',
-        'IMG_20250829_195014.jpg',
-        'IMG_20250830_094313.jpg',
-        'IMG_20250830_115701_1.jpg',
-        'IMG_20250830_134306.jpg',
-        'IMG_20250831_122417_1.jpg',
-        'IMG_20250901_072530.jpg',
-        'IMG_20250901_170634.jpg',
-        'IMG_20250910_132832.jpg',
-        'IMG_20250913_155149.jpg',
-        'IMG_20250913_202314.jpg',
-        'IMG_20250913_235210.jpg',
-        'IMG_20250914_123038.jpg',
-        'IMG_20250914_140112.jpg',
-        'IMG_20250914_173305.jpg',
-        'IMG_20250914_193830.jpg',
-        'IMG_20250914_200834.jpg',
-        'IMG_20250914_200841.jpg',
-        'IMG_20250915_191124.jpg',
-        'IMG_20250915_191130.jpg',
-        'IMG_20250915_191205.jpg',
-        'IMG_20250915_192632.jpg',
-        'IMG_20250915_192726.jpg',
-        'IMG_20250915_221557_1.jpg',
-        'IMG_20250915_221722.jpg',
-        'IMG_20250915_222110.jpg',
-        'IMG_20250916_012235.jpg',
-        'IMG_20250916_143843.jpg',
-        'IMG_20250916_155806.jpg',
-        'IMG_20250916_161514.jpg',
-        'IMG_20250916_184105.jpg',
-        'IMG_20250917_164532.jpg',
-        'IMG_20251002_095148.jpg',
-        'IMG_20251002_163205.jpg',
-        'IMG_20251002_171104.jpg',
-        'IMG_20251002_180259_1.jpg',
-        'IMG_20251005_130418.jpg',
-        'IMG_20251006_105451.jpg'
+        'IMG_20250817_212036.jpg', 'IMG_20250818_203221.jpg', 'IMG_20250818_203308.jpg',
+        'IMG_20250823_155336.jpg', 'IMG_20250826_093345_1.jpg', 'IMG_20250826_141047.jpg',
+        'IMG_20250828_121826.jpg', 'IMG_20250828_133111.jpg', 'IMG_20250828_192257.jpg',
+        'IMG_20250828_192318_2.jpg', 'IMG_20250828_213506.jpg', 'IMG_20250828_213537.jpg',
+        'IMG_20250828_214233.jpg', 'IMG_20250829_195014.jpg', 'IMG_20250830_094313.jpg',
+        'IMG_20250830_115701_1.jpg', 'IMG_20250830_134306.jpg', 'IMG_20250831_122417_1.jpg',
+        'IMG_20250901_072530.jpg', 'IMG_20250901_170634.jpg', 'IMG_20250910_132832.jpg',
+        'IMG_20250913_155149.jpg', 'IMG_20250913_202314.jpg', 'IMG_20250913_235210.jpg',
+        'IMG_20250914_123038.jpg', 'IMG_20250914_140112.jpg', 'IMG_20250914_173305.jpg',
+        'IMG_20250914_193830.jpg', 'IMG_20250914_200834.jpg', 'IMG_20250914_200841.jpg',
+        'IMG_20250915_191124.jpg', 'IMG_20250915_191130.jpg', 'IMG_20250915_191205.jpg',
+        'IMG_20250915_192632.jpg', 'IMG_20250915_192726.jpg', 'IMG_20250915_221557_1.jpg',
+        'IMG_20250915_221722.jpg', 'IMG_20250915_222110.jpg', 'IMG_20250916_012235.jpg',
+        'IMG_20250916_143843.jpg', 'IMG_20250916_155806.jpg', 'IMG_20250916_161514.jpg',
+        'IMG_20250916_184105.jpg', 'IMG_20250917_164532.jpg', 'IMG_20251002_095148.jpg',
+        'IMG_20251002_163205.jpg', 'IMG_20251002_171104.jpg', 'IMG_20251002_180259_1.jpg',
+        'IMG_20251005_130418.jpg', 'IMG_20251006_105451.jpg'
     ];
     const PRELOADED_PHOTOS = BASE_PHOTOS;
 
@@ -255,12 +234,50 @@
     let gestureDebounce = 0;
     let isCameraRunning = false;
 
+    // 加载状态控制
+    let isTimeUp = false; // 30s 倒计时是否结束
+    let isAssetsLoaded = false; // 资源是否加载完
+    let hasStarted = false; // 是否已经进入主程序
+
     const COLORS = {
         green: new THREE.Color(0x2F5A3F),
         gold: new THREE.Color(0xFFD700),
         red: new THREE.Color(0xB22222),
         snow: new THREE.Color(0xFFFFFF)
     };
+
+    // --- 核心修改：30秒加载逻辑 ---
+    function startLoadingSequence() {
+        const bar = document.getElementById('progress-bar');
+        // 使用 GSAP 让进度条在 30秒内 走到 100%
+        gsap.to(bar, {
+            width: "100%",
+            duration: 30, // 强制 30 秒
+            ease: "linear",
+            onComplete: () => {
+                isTimeUp = true;
+                checkAllReady();
+            }
+        });
+    }
+
+    // 检查是否所有条件都满足（时间到 + 图片好 + 摄像头好）
+    function checkAllReady() {
+        if (isTimeUp && isAssetsLoaded && isCameraRunning && !hasStarted) {
+            hasStarted = true;
+            // 淡出加载层
+            const ui = document.getElementById('ui-layer');
+            ui.style.opacity = 0;
+            setTimeout(() => {
+                ui.style.display = 'none';
+            }, 1000);
+
+            // 显示主界面元素
+            document.getElementById('greeting-text').style.opacity = 1;
+            document.getElementById('guide-overlay').style.opacity = 1;
+            document.querySelector('.input_video').style.display = 'block';
+        }
+    }
 
     // --- 初始化 Three.js ---
     function init() {
@@ -272,8 +289,7 @@
 
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        // 核心修改：针对手机竖屏，大幅拉远相机距离
-        // 电脑默认是15，手机我们需要给到 24 甚至更远，才能放下 2列
+        // 摄像机位置
         if(window.innerWidth < window.innerHeight) {
             camera.position.set(0, 0, 24);
         } else {
@@ -291,11 +307,9 @@
         // 灯光
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         scene.add(ambientLight);
-
         const pointLight = new THREE.PointLight(0xFFD700, 1, 50);
         pointLight.position.set(5, 10, 5);
         scene.add(pointLight);
-
         const spotLight = new THREE.SpotLight(0xff0000, 2);
         spotLight.position.set(-5, 10, 0);
         scene.add(spotLight);
@@ -304,11 +318,12 @@
         createSnow();
         createTreeParticles();
         createOrnaments();
-        loadPhotos(PRELOADED_PHOTOS);
+        loadPhotos(PRELOADED_PHOTOS); // 启动图片加载
 
         window.addEventListener('resize', onWindowResize, false);
         animate();
-        startCamera();
+        startCamera(); // 启动摄像头
+        startLoadingSequence(); // 启动30s倒计时
     }
 
     // --- 5B: 飘雪冬夜 ---
@@ -318,20 +333,10 @@
         const snowGeo = new THREE.BufferGeometry();
         const positions = [];
         const velocities = [];
-
         for(let i=0; i<snowCount; i++) {
-            positions.push(
-                (Math.random() - 0.5) * 50,
-                Math.random() * 30,
-                (Math.random() - 0.5) * 50
-            );
-            velocities.push(
-                (Math.random() - 0.5) * 0.05,
-                -(Math.random() * 0.05 + 0.02),
-                (Math.random() - 0.5) * 0.05
-            );
+            positions.push((Math.random()-0.5)*50, Math.random()*30, (Math.random()-0.5)*50);
+            velocities.push((Math.random()-0.5)*0.05, -(Math.random()*0.05+0.02), (Math.random()-0.5)*0.05);
         }
-
         snowGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         snowGeo.userData = { velocities: velocities };
 
@@ -345,15 +350,9 @@
         const texture = new THREE.CanvasTexture(canvas);
 
         const snowMat = new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: 0.2,
-            map: texture,
-            transparent: true,
-            opacity: 0.6,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending
+            color: 0xffffff, size: 0.2, map: texture, transparent: true, opacity: 0.6,
+            depthWrite: false, blending: THREE.AdditiveBlending
         });
-
         snowSystem = new THREE.Points(snowGeo, snowMat);
         scene.add(snowSystem);
     }
@@ -362,7 +361,6 @@
         if(!snowSystem) return;
         const positions = snowSystem.geometry.attributes.position.array;
         const vels = snowSystem.geometry.userData.velocities;
-
         for(let i=0; i < positions.length / 3; i++) {
             positions[i*3] += vels[i*3];
             positions[i*3+1] += vels[i*3+1];
@@ -378,36 +376,27 @@
         const geo = new THREE.BufferGeometry();
         const positions = [];
         const colors = [];
-        const treePos = [];
-        const cloudPos = [];
-
-        const colorGreen = COLORS.green;
-        const colorGold = COLORS.gold;
+        const treePos = []; const cloudPos = [];
+        const colorGreen = COLORS.green; const colorGold = COLORS.gold;
 
         for(let i=0; i<particleCount; i++) {
             const t = i / particleCount;
             const angle = t * Math.PI * 40;
             const radius = t * 4;
             const height = (1 - t) * 12 - 6;
-
             const randomR = Math.random() * 0.5;
             const xTree = (radius + randomR) * Math.cos(angle);
             const zTree = (radius + randomR) * Math.sin(angle);
             const yTree = height;
-
             treePos.push(xTree, yTree, zTree);
-
             const xCloud = (Math.random() - 0.5) * 40;
             const yCloud = (Math.random() - 0.5) * 30;
             const zCloud = (Math.random() - 0.5) * 20 - 5;
             cloudPos.push(xCloud, yCloud, zCloud);
-
             positions.push(xTree, yTree, zTree);
-
             const mixedColor = Math.random() > 0.8 ? colorGold : colorGreen;
             colors.push(mixedColor.r, mixedColor.g, mixedColor.b);
         }
-
         geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.userData = { treePos: treePos, cloudPos: cloudPos };
@@ -419,32 +408,19 @@
                 color: { value: new THREE.Color(0xffffff) }
             },
             vertexShader: `
-                    uniform float time;
-                    uniform float pixelRatio;
-                    attribute vec3 color;
-                    varying vec3 vColor;
-                    void main() {
-                        vColor = color;
-                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    uniform float time; uniform float pixelRatio; attribute vec3 color; varying vec3 vColor;
+                    void main() { vColor = color; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                         gl_PointSize = (4.0 + 2.0 * sin(time * 2.0)) * pixelRatio * (50.0 / -mvPosition.z);
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
+                        gl_Position = projectionMatrix * mvPosition; }
                 `,
             fragmentShader: `
-                    varying vec3 vColor;
-                    void main() {
-                        vec2 coord = gl_PointCoord - vec2(0.5);
+                    varying vec3 vColor; void main() { vec2 coord = gl_PointCoord - vec2(0.5);
                         if(length(coord) > 0.5) discard;
-                        float strength = 1.0 - (length(coord) * 2.0);
-                        strength = pow(strength, 1.5);
-                        gl_FragColor = vec4(vColor, strength * 0.8);
-                    }
+                        float strength = 1.0 - (length(coord) * 2.0); strength = pow(strength, 1.5);
+                        gl_FragColor = vec4(vColor, strength * 0.8); }
                 `,
-            transparent: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending
+            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
         });
-
         particles = new THREE.Points(geo, shaderMaterial);
         scene.add(particles);
     }
@@ -453,14 +429,9 @@
     function createOrnaments() {
         const count = 200;
         const geom = new THREE.IcosahedronGeometry(0.2, 0);
-        const mat = new THREE.MeshStandardMaterial({
-            color: COLORS.red,
-            roughness: 0.2,
-            metalness: 0.8
-        });
+        const mat = new THREE.MeshStandardMaterial({ color: COLORS.red, roughness: 0.2, metalness: 0.8 });
         ornamentsMesh = new THREE.InstancedMesh(geom, mat, count);
         const dummy = new THREE.Object3D();
-
         for(let i=0; i<count; i++) {
             const h = Math.random() * 10 - 5;
             const r = (5 - (h + 5)) * 0.4 + 0.5;
@@ -475,26 +446,18 @@
     // --- 拍立得照片逻辑 ---
     function createPolaroid(texture, index) {
         const group = new THREE.Group();
-
         const frameGeo = new THREE.BoxGeometry(1.8, 2.2, 0.05);
         const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
         const frame = new THREE.Mesh(frameGeo, frameMat);
-
         const photoGeo = new THREE.PlaneGeometry(1.6, 1.6);
         const photoMat = new THREE.MeshBasicMaterial({ map: texture });
         const photo = new THREE.Mesh(photoGeo, photoMat);
-        photo.position.z = 0.03;
-        photo.position.y = 0.2;
-
+        photo.position.z = 0.03; photo.position.y = 0.2;
         const trimGeo = new THREE.PlaneGeometry(1.6, 0.02);
         const trimMat = new THREE.MeshStandardMaterial({ color: COLORS.gold, metalness: 1, roughness: 0.2 });
         const trim = new THREE.Mesh(trimGeo, trimMat);
         trim.position.set(0, -0.7, 0.04);
-
-        group.add(frame);
-        group.add(photo);
-        group.add(trim);
-
+        group.add(frame); group.add(photo); group.add(trim);
         group.position.set(0, -100, 0);
 
         const totalPhotos = 50;
@@ -504,18 +467,13 @@
         const r = (6 - normalizedH) * 0.5;
 
         group.userData.treePos = {
-            x: Math.cos(angle) * r,
-            y: normalizedH,
-            z: Math.sin(angle) * r,
-            rotX: 0,
-            rotY: -angle + Math.PI/2,
-            rotZ: 0,
-            scale: 0.35
+            x: Math.cos(angle) * r, y: normalizedH, z: Math.sin(angle) * r,
+            rotX: 0, rotY: -angle + Math.PI/2, rotZ: 0, scale: 0.35
         };
-
         return group;
     }
 
+    // --- 核心修改：真正的图片加载检测 ---
     function loadPhotos(urls) {
         const loader = new THREE.TextureLoader();
         photoMeshes.forEach(m => scene.remove(m));
@@ -523,32 +481,35 @@
         photoMeshGroup = new THREE.Group();
         scene.add(photoMeshGroup);
 
+        let loadedCount = 0; // 已加载数量
+
         urls.forEach((url, index) => {
             loader.load(url, (tex) => {
                 const mesh = createPolaroid(tex, index);
                 photoMeshes.push(mesh);
                 photoMeshGroup.add(mesh);
-                mesh.position.set(
-                    mesh.userData.treePos.x,
-                    mesh.userData.treePos.y,
-                    mesh.userData.treePos.z
-                );
+                mesh.position.set(mesh.userData.treePos.x, mesh.userData.treePos.y, mesh.userData.treePos.z);
                 mesh.rotation.y = mesh.userData.treePos.rotY;
                 mesh.scale.set(0.35, 0.35, 0.35);
+
+                // 计数
+                loadedCount++;
+                if (loadedCount === urls.length) {
+                    isAssetsLoaded = true;
+                    console.log("所有图片加载完毕!");
+                    checkAllReady(); // 尝试进入主界面
+                }
+            }, undefined, (err) => {
+                console.error("图片加载失败:", url);
+                // 即使失败也要计数，防止卡死
+                loadedCount++;
+                if (loadedCount === urls.length) {
+                    isAssetsLoaded = true;
+                    checkAllReady();
+                }
             });
         });
     }
-
-    document.getElementById('file-input').addEventListener('change', function(e) {
-        const files = e.target.files;
-        if(files.length === 0) return;
-        const newUrls = [];
-        for(let i=0; i<files.length; i++) {
-            newUrls.push(URL.createObjectURL(files[i]));
-        }
-        photoBatchIndex = 0;
-        loadPhotos(newUrls);
-    });
 
     // --- 核心：状态机与布局计算 (强制手机竖屏优化) ---
     function updateState(newState, force = false) {
@@ -578,9 +539,7 @@
         const animObj = { val: 0 };
 
         gsap.to(animObj, {
-            val: 1,
-            duration: duration,
-            ease: ease,
+            val: 1, duration: duration, ease: ease,
             onUpdate: () => {
                 for(let i=0; i < pPositions.length; i++) {
                     pPositions[i] = startPos[i] + (targets[i] - startPos[i]) * animObj.val;
@@ -596,24 +555,22 @@
             gsap.to(ornamentsMesh.scale, { x: 0, y: 0, z: 0, duration: duration });
         }
 
-        // --- 核心修改：照片布局逻辑 ---
+        // --- 核心修改：照片布局逻辑 (放大版) ---
         const activeIndices = [];
         for(let i = 0; i < PHOTOS_PER_BATCH; i++) {
             activeIndices.push((photoBatchIndex + i) % photoMeshes.length);
         }
 
-        // 强制使用竖屏逻辑 (因为你主要用手机)
-        // 固定 2 列
         const cols = 2;
 
-        // 间距和位置参数优化
-        const spacingX = 4.2; // 稍微紧凑一点
-        const spacingY = 5.5;
+        // --- [可调节参数] 如果还嫌小，可以继续改这里 ---
+        const spacingX = 6.0; // 原 4.2 -> 6.0 (拉大横向间距)
+        const spacingY = 8.0; // 原 5.5 -> 8.0 (拉大纵向间距)
+        const targetScale = 3.2; // 原 1.2 -> 3.2 (大幅放大照片)
+        // ---------------------------------------------
 
-        // 重要：把照片往里推 (Z=0)，不要太靠近相机
-        // 相机在 Z=24，照片在 Z=0，距离足够远，视野足够大
+        // 照片Z轴位置，0表示在世界中心，离相机(Z=24)有一定距离，保证不贴脸
         const targetZ = 0;
-        const targetScale = 1.2;
 
         photoMeshes.forEach((mesh, index) => {
             let target = {};
@@ -623,9 +580,7 @@
                     x: mesh.userData.treePos.x,
                     y: mesh.userData.treePos.y,
                     z: mesh.userData.treePos.z,
-                    rotX: 0,
-                    rotY: mesh.userData.treePos.rotY,
-                    rotZ: 0,
+                    rotX: 0, rotY: mesh.userData.treePos.rotY, rotZ: 0,
                     scale: 0.35
                 };
             } else {
@@ -641,55 +596,30 @@
 
                     target = {
                         x: startX + col * spacingX,
-                        // 稍微加一点 offsetY 避免被底部文字挡住
                         y: startY - row * spacingY + 1.5,
                         z: targetZ,
-                        rotX: 0,
-                        rotY: 0,
-                        rotZ: 0,
+                        rotX: 0, rotY: 0, rotZ: 0,
                         scale: targetScale
                     };
                 } else {
                     target = {
-                        x: mesh.userData.treePos.x * 5,
-                        y: mesh.userData.treePos.y * 5,
-                        z: -20,
-                        rotX: 0, rotY: 0, rotZ: 0,
-                        scale: 0
+                        x: mesh.userData.treePos.x * 5, y: mesh.userData.treePos.y * 5, z: -20,
+                        rotX: 0, rotY: 0, rotZ: 0, scale: 0
                     };
                 }
             }
 
-            gsap.to(mesh.position, {
-                x: target.x,
-                y: target.y,
-                z: target.z,
-                duration: duration,
-                ease: ease
-            });
-            gsap.to(mesh.rotation, {
-                x: target.rotX,
-                y: target.rotY,
-                z: target.rotZ,
-                duration: duration,
-                ease: ease
-            });
-            gsap.to(mesh.scale, {
-                x: target.scale,
-                y: target.scale,
-                z: target.scale,
-                duration: duration,
-                ease: ease
-            });
+            gsap.to(mesh.position, { x: target.x, y: target.y, z: target.z, duration: duration, ease: ease });
+            gsap.to(mesh.rotation, { x: target.rotX, y: target.rotY, z: target.rotZ, duration: duration, ease: ease });
+            gsap.to(mesh.scale, { x: target.scale, y: target.scale, z: target.scale, duration: duration, ease: ease });
         });
     }
 
     const videoElement = document.getElementsByClassName('input_video')[0];
 
     function onResults(results) {
-        document.getElementById('loading-text').style.display = 'none';
-        document.getElementById('instructions').style.opacity = 1;
-        document.querySelector('.input_video').style.display = 'block';
+        // 注意：这里删除了原来隐藏loading的代码
+        // 现在loading的隐藏完全由 checkAllReady() 控制
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
@@ -698,8 +628,8 @@
             const dist = tips.reduce((acc, t) => acc + d(wrist, t), 0) / 4;
 
             let gesture = 'UNKNOWN';
-            if (dist < 0.25) gesture = 'FIST';
-            else if (dist > 0.4) gesture = 'OPEN';
+            if (dist < 0.28) gesture = 'FIST'; // 调宽阈值
+            else if (dist > 0.38) gesture = 'OPEN'; // 调宽阈值
 
             const now = Date.now();
             if (now - gestureDebounce > 500) {
@@ -720,12 +650,18 @@
     }
 
     const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.4, minTrackingConfidence: 0.5 }); // 降低置信度
     hands.onResults(onResults);
 
     async function startCamera() {
+        if (!window.isSecureContext) {
+            console.warn("非安全环境，摄像头可能无法启动");
+            // 即使摄像头失败，我们也可以假装启动成功，或者显示错误
+            // 这里为了礼物体验，如果失败就不阻塞，只依赖图片加载和时间
+        }
+
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showError("您的浏览器不支持摄像头访问。");
+            console.warn("浏览器不支持摄像头");
             return;
         }
         try {
@@ -736,16 +672,20 @@
             videoElement.onloadedmetadata = () => {
                 videoElement.play();
                 isCameraRunning = true;
-                processVideoLoop();
+                console.log("摄像头启动成功");
+                checkAllReady(); // 尝试检测是否可以进入
+                processVideoLoop(); // 启动循环!
             };
         } catch (error) {
-            console.error(error);
-            showError("无法访问摄像头，请检查权限。");
+            console.error("摄像头启动失败:", error);
+            // 容错处理：如果摄像头坏了，30秒后也强制进入，虽然不能手势控制，但至少能看树
+            isCameraRunning = true;
         }
     }
 
     function showError(msg) {
-        document.getElementById('loading-text').innerHTML = msg;
+        // Loading text handles errors nicely now
+        console.error(msg);
     }
 
     async function processVideoLoop() {
